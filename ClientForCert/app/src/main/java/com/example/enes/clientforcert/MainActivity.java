@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Base64;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
@@ -32,6 +34,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class MainActivity extends AppCompatActivity {
     private TextView mWeatherTextView;
+    private Button btnCount;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,11 +42,19 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mWeatherTextView = (TextView) findViewById(R.id.tv_weather_data);
+        btnCount=(Button)findViewById(R.id.button);
+
+        btnCount.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                loadData();
+            }
+        });
+
         loadData();
     }
 
     private void loadData() {
-        new FetchTask().execute(checkAppSignature(this));
+        new FetchTask().execute();
     }
     public class FetchTask extends AsyncTask<String, Void, String[]> {
 
@@ -52,14 +63,12 @@ public class MainActivity extends AppCompatActivity {
             if (params.length == 0) {
                 return null;
             }
-
-            String sign = params[0];
             String[] ret = new String[1];
 
             BufferedReader reader=null;
             try {
 
-                char[] passphrase = "Ea1989".toCharArray();
+                char[] passphrase = "".toCharArray();
                 KeyStore ksTrust = KeyStore.getInstance("BKS");
                 Context context = getApplicationContext();
 
@@ -77,21 +86,14 @@ public class MainActivity extends AppCompatActivity {
                 InputStreamReader inputstreamreader = new InputStreamReader(sslsocket.getInputStream());
                 BufferedReader bufferedreader = new BufferedReader(inputstreamreader);
 
-                OutputStream outputstream = sslsocket.getOutputStream();
-                OutputStreamWriter outputstreamwriter = new OutputStreamWriter(outputstream);
-                BufferedWriter bufferedwriter = new BufferedWriter(outputstreamwriter);
 
                 ret[0]=bufferedreader.readLine();
 
-                bufferedwriter.write("denem");
-                bufferedwriter.flush();
-                String string ;
-              // while ((string = bufferedreader.readLine()) != null) {
-              //  }
             }
             catch(Exception ex)
             {
-                System.out.println(">>>>>>>>>>>>>>>HTTP isteginde hata olustu");
+                ret[0]="baglanti saglanamdi";
+                Log.d(">>>>>>>>>>>>>>>","HTTP isteginde hata olustu");
                 Log.d(">>>>>>>>>>>>>>>", "exception", ex);
             }
             finally
@@ -108,40 +110,10 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(String[] data) {
             if (data != null) {
                 for (String string : data) {
-                    mWeatherTextView.append(string + "\n\n\n");
+                    mWeatherTextView.setText(string + "\n\n\n");
                 }
             }
         }
     }
-    public static String checkAppSignature(Context context) {
 
-        try {
-
-            PackageInfo packageInfo = context.getPackageManager()
-
-                    .getPackageInfo(context.getPackageName(),
-
-                            PackageManager.GET_SIGNATURES);
-
-            for (Signature signature : packageInfo.signatures) {
-
-                MessageDigest md = MessageDigest.getInstance("SHA");
-
-                md.update(signature.toByteArray());
-
-                return  Base64.encodeToString(md.digest(), Base64.DEFAULT);
-                //compare signatures
-
-
-            }
-
-        } catch (Exception e) {
-
-//assumes an issue in checking signature., but we let the caller decide on what to do.
-
-        }
-
-        return null;
-
-    }
 }

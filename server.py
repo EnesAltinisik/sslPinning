@@ -1,31 +1,30 @@
 import socket, ssl
 
 bindsocket = socket.socket()
+
+bindsocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 bindsocket.bind(('', 10023))
 bindsocket.listen(5)
+print "creted new"
 
-def do_something(connstream, data):
-    print "do_something:", data
-    return True
-
-def deal_with_client(connstream):
-    data = connstream.read()
-    while data:
-        if not do_something(connstream, data):
-            break
-        data = connstream.read()
+i=0
 
 while True:
-    newsocket, fromaddr = bindsocket.accept()
     
-    wrappedSocket= ssl.wrap_socket(newsocket,
-                                 server_side=True,
+      
+    try:
+        newsocket, fromaddr = bindsocket.accept()
+        
+        wrappedSocket= ssl.wrap_socket(newsocket,
+                                         server_side=True,
                                  certfile="enes.crt",
                                  keyfile="enes.key")
-    
-    try:
-            wrappedSocket.sendall("deneme")
+        try:
+            wrappedSocket.send(str(i))
+            i+=1;
             
-    finally:
-        wrappedSocket.close()
-        newsocket.close();
+        finally:
+            wrappedSocket.close()
+            newsocket.close();
+    except:
+        print "stop"
