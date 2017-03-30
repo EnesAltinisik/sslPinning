@@ -1,6 +1,6 @@
 import BaseHTTPServer, SimpleHTTPServer
 import ssl
 
-httpd = BaseHTTPServer.HTTPServer(('', 1234), SimpleHTTPServer.SimpleHTTPRequestHandler)
-httpd.socket = ssl.wrap_socket (httpd.socket,keyfile='enes.key', certfile='enes.crt', server_side=True)
-httpd.serve_forever()
+HTTPServer = BaseHTTPServer.HTTPServer(('', 1234), SimpleHTTPServer.SimpleHTTPRequestHandler)
+HTTPServer.socket = ssl.wrap_socket (HTTPServer.socket,keyfile='enes.key', certfile='enes.crt', server_side=True)
+HTTPServer.serve_forever()

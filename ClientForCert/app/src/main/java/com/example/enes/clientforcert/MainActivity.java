@@ -72,10 +72,7 @@ public class MainActivity extends AppCompatActivity {
             }
             String[] ret = new String[1];
             try {
-                // Load CAs from an InputStream
-// (could be from a resource or ByteArrayInputStream or ...)
                 CertificateFactory cf = CertificateFactory.getInstance("X.509");
-// From https://www.washington.edu/itconnect/security/ca/load-der.crt
                 InputStream caInput = new BufferedInputStream(getAssets().open("enes.crt"));
                 Certificate ca;
                 try {
@@ -83,23 +80,18 @@ public class MainActivity extends AppCompatActivity {
                 } finally {
                     caInput.close();
                 }
-
-// Create a KeyStore containing our trusted CAs
                 String keyStoreType = KeyStore.getDefaultType();
                 KeyStore keyStore = KeyStore.getInstance(keyStoreType);
                 keyStore.load(null, null);
                 keyStore.setCertificateEntry("ca", ca);
 
-// Create a TrustManager that trusts the CAs in our KeyStore
                 String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
                 TrustManagerFactory tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
                 tmf.init(keyStore);
 
-// Create an SSLContext that uses our TrustManager
                 SSLContext context = SSLContext.getInstance("TLS");
                 context.init(null, tmf.getTrustManagers(), null);
 
-// Tell the URLConnection to use a SocketFactory from our SSLContext
                 URL url = new URL("https://192.168.56.1:1234");
 
                 HttpsURLConnection urlConnection =
@@ -112,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
                 urlConnection.connect();
+
                 urlConnection.setRequestMethod("GET");
 
                 BufferedReader in = new BufferedReader(
