@@ -12,8 +12,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -24,10 +26,15 @@ import java.net.URL;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
@@ -54,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadData() {
-        new FetchTask().execute();
+        new FetchTask().execute("");
     }
     public class FetchTask extends AsyncTask<String, Void, String[]> {
 
@@ -64,45 +71,66 @@ public class MainActivity extends AppCompatActivity {
                 return null;
             }
             String[] ret = new String[1];
-
-            BufferedReader reader=null;
             try {
+                // Load CAs from an InputStream
+// (could be from a resource or ByteArrayInputStream or ...)
+                CertificateFactory cf = CertificateFactory.getInstance("X.509");
+// From https://www.washington.edu/itconnect/security/ca/load-der.crt
+                InputStream caInput = new BufferedInputStream(getAssets().open("enes.crt"));
+                Certificate ca;
+                try {
+                    ca = cf.generateCertificate(caInput);
+                } finally {
+                    caInput.close();
+                }
 
-                char[] passphrase = "".toCharArray();
-                KeyStore ksTrust = KeyStore.getInstance("BKS");
-                Context context = getApplicationContext();
+// Create a KeyStore containing our trusted CAs
+                String keyStoreType = KeyStore.getDefaultType();
+                KeyStore keyStore = KeyStore.getInstance(keyStoreType);
+                keyStore.load(null, null);
+                keyStore.setCertificateEntry("ca", ca);
 
-                ksTrust.load(context.getResources().openRawResource(R.raw.trusted), passphrase);
-                TrustManagerFactory tmf = TrustManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-                tmf.init(ksTrust);
+// Create a TrustManager that trusts the CAs in our KeyStore
+                String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
+                tmf.init(keyStore);
 
-                SSLContext sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, tmf.getTrustManagers(), new SecureRandom());
+// Create an SSLContext that uses our TrustManager
+                SSLContext context = SSLContext.getInstance("TLS");
+                context.init(null, tmf.getTrustManagers(), null);
 
+// Tell the URLConnection to use a SocketFactory from our SSLContext
+                URL url = new URL("https://192.168.56.1:1234");
 
-                SSLSocketFactory sslsocketfactory =  sslContext.getSocketFactory();
-                SSLSocket sslsocket = (SSLSocket) sslsocketfactory.createSocket("192.168.56.1", 10023);
+                HttpsURLConnection urlConnection =
+                        (HttpsURLConnection)url.openConnection();
+                urlConnection.setSSLSocketFactory(context.getSocketFactory());
+                urlConnection.setHostnameVerifier(new HostnameVerifier() {
+                    @Override
+                    public boolean verify(String hostname, SSLSession session) {
+                        return true;
+                    }
+                });
+                urlConnection.connect();
+                urlConnection.setRequestMethod("GET");
 
-                InputStreamReader inputstreamreader = new InputStreamReader(sslsocket.getInputStream());
-                BufferedReader bufferedreader = new BufferedReader(inputstreamreader);
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(urlConnection.getInputStream()));
+                String inputLine;
+                StringBuffer response = new StringBuffer();
 
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                in.close();
 
-                ret[0]=bufferedreader.readLine();
-
-            }
-            catch(Exception ex)
+                //print result
+                ret[0]=response.toString();
+            }catch(Exception ex)
             {
-                ret[0]="baglanti saglanamdi";
+                ret[0]="baglanti yok";
                 Log.d(">>>>>>>>>>>>>>>","HTTP isteginde hata olustu");
                 Log.d(">>>>>>>>>>>>>>>", "exception", ex);
-            }
-            finally
-            {
-                try
-                {
-                    reader.close();
-                }
-                catch(Exception ex) {}
             }
             return  ret;
         }
